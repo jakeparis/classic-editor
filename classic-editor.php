@@ -351,6 +351,7 @@ class Classic_Editor {
 	}
 
 	public static function save_user_settings( $user_id ) {
+		global $wpdb;
 		if (
 			isset( $_POST['classic-editor-user-settings'] ) &&
 			isset( $_POST['classic-editor-replace'] ) &&
@@ -363,7 +364,19 @@ class Classic_Editor {
 			}
 
 			$editor = self::validate_option_editor( $_POST['classic-editor-replace'] );
-			update_user_option( $user_id, 'classic-editor-settings', $editor );
+
+			if( isset( $_POST['classic-editor-global'] ) && $_POST['classic-editor-global'] == '1' ) {
+
+				$wpdb->prepare(
+					"DELETE FROM {$wpdb->usermeta} WHERE meta_key RLIKE 'wp_[0-9]+_classic-editor-settings' && user_id = %d",
+					$user_id
+				);
+				update_user_option( $user_id, 'classic-editor-settings', $editor, true );
+
+			} else {
+				update_user_option( $user_id, 'classic-editor-settings', $editor);
+			}
+
 		}
 	}
 
@@ -388,7 +401,7 @@ class Classic_Editor {
 
 	public static function settings_1( $opts_for_user=0 ) {
 		$settings = self::get_settings( 'refresh', $opts_for_user );
-
+		$screen = get_current_screen();
 		?>
 		<div class="classic-editor-options">
 			<p>
@@ -399,6 +412,13 @@ class Classic_Editor {
 				<input type="radio" name="classic-editor-replace" id="classic-editor-block" value="block"<?php if ( $settings['editor'] !== 'classic' ) echo ' checked'; ?> />
 				<label for="classic-editor-block"><?php _ex( 'Block editor', 'Editor Name', 'classic-editor' ); ?></label>
 			</p>
+			<?php
+			if( $screen->parent_base == 'users' ) { ?>
+				<p>
+					<input type="checkbox" name="classic-editor-global" id="classic-editor-global" value="1" />
+					<label for="classic-editor-global"><?php _ex( 'Update all my sites.', 'Editor Name', 'classic-editor' ); ?></label>
+				</p>
+			<?php } ?>
 		</div>
 		<script>
 		jQuery( 'document' ).ready( function( $ ) {
